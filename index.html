@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>إكس أو | XO</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --cell: #273549;
+    --cell-hover: #31435c;
+    --x: #38bdf8;
+    --o: #fb7185;
+    --win: #4ade80;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    background: radial-gradient(1200px 800px at 80% -10%, #1e3a5f 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  h1 {
+    font-size: clamp(2rem, 7vw, 3rem);
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    background: linear-gradient(90deg, var(--x), var(--o));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle { color: var(--muted); font-size: .95rem; margin-bottom: 20px; }
+
+  .modes { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; justify-content: center; }
+  .modes button {
+    border: 1px solid #334155;
+    background: var(--panel);
+    color: var(--text);
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .modes button.active { background: var(--x); border-color: var(--x); color: #082f49; font-weight: 700; }
+
+  .scoreboard {
+    display: flex; gap: 10px; margin-bottom: 18px; width: 100%; max-width: 340px;
+  }
+  .score {
+    flex: 1; background: var(--panel); border-radius: 14px; padding: 10px 6px;
+    text-align: center; border: 1px solid #334155; transition: border-color .2s;
+  }
+  .score.turn { border-color: var(--win); box-shadow: 0 0 12px rgba(74,222,128,.25); }
+  .score .label { font-size: .78rem; color: var(--muted); margin-bottom: 2px; }
+  .score .value { font-size: 1.35rem; font-weight: 800; }
+  .score.x .value { color: var(--x); }
+  .score.o .value { color: var(--o); }
+  .score.d .value { color: var(--muted); }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 340px;
+    aspect-ratio: 1;
+  }
+  .cell {
+    background: var(--cell);
+    border: none;
+    border-radius: 16px;
+    font-size: clamp(2.4rem, 12vw, 3.6rem);
+    font-weight: 800;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s ease, transform .1s ease;
+    box-shadow: 0 4px 0 rgba(0,0,0,.35);
+    user-select: none;
+  }
+  .cell:active { transform: scale(.96); }
+  .cell:not(.filled):hover { background: var(--cell-hover); }
+  .cell.x { color: var(--x); text-shadow: 0 0 18px rgba(56,189,248,.5); }
+  .cell.o { color: var(--o); text-shadow: 0 0 18px rgba(251,113,133,.5); }
+  .cell.win { background: rgba(74,222,128,.18); box-shadow: 0 0 18px rgba(74,222,128,.45); animation: pop .35s ease; }
+  @keyframes pop { 0% { transform: scale(.85); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+  .status {
+    margin-top: 18px; font-size: 1.05rem; min-height: 1.6em; font-weight: 600; text-align: center;
+  }
+  .reset {
+    margin-top: 12px;
+    background: linear-gradient(90deg, var(--x), #818cf8);
+    border: none; color: #0b1120; font-weight: 800;
+    padding: 12px 34px; border-radius: 999px; font-size: 1rem; cursor: pointer;
+    transition: transform .1s ease, filter .15s ease;
+  }
+  .reset:hover { filter: brightness(1.1); }
+  .reset:active { transform: scale(.96); }
+  .footer { margin-top: 22px; color: #475569; font-size: .75rem; }
+</style>
+</head>
+<body>
+  <h1>إكس أو</h1>
+  <div class="subtitle">العب مع صاحبك أو ضد الكمبيوتر</div>
+
+  <div class="modes">
+    <button id="mode-friend" class="active">👥 مع صاحبك</button>
+    <button id="mode-easy">🤖 كمبيوتر سهل</button>
+    <button id="mode-hard">😈 كمبيوتر صعب</button>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score x" id="score-x-box"><div class="label" id="label-x">إنت (X)</div><div class="value" id="score-x">0</div></div>
+    <div class="score d"><div class="label">تعادل</div><div class="value" id="score-draw">0</div></div>
+    <div class="score o" id="score-o-box"><div class="label" id="label-o">صاحبك (O)</div><div class="value" id="score-o">0</div></div>
+  </div>
+
+  <div class="board" id="board"></div>
+  <div class="status" id="status"></div>
+  <button class="reset" id="reset">🔄 جولة جديدة</button>
+  <div class="footer">اتعملت بواسطة Instinct</div>
+
+<script>
+(function () {
+  var board = Array(9).fill('');
+  var current = 'X';
+  var over = false;
+  var mode = 'friend'; // friend | easy | hard
+  var scores = { x: 0, o: 0, d: 0 };
+  var wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+  var boardEl = document.getElementById('board');
+  var statusEl = document.getElementById('status');
+  var cells = [];
+
+  for (var i = 0; i < 9; i++) {
+    (function (i) {
+      var c = document.createElement('button');
+      c.className = 'cell';
+      c.setAttribute('aria-label', 'خانة ' + (i + 1));
+      c.addEventListener('click', function () { play(i); });
+      boardEl.appendChild(c);
+      cells.push(c);
+    })(i);
+  }
+
+  function names() {
+    if (mode === 'friend') return { X: 'اللاعب X', O: 'اللاعب O' };
+    return { X: 'إنت', O: 'الكمبيوتر' };
+  }
+
+  function setStatus() {
+    if (over) return;
+    var n = names();
+    statusEl.textContent = 'دور ' + n[current];
+    document.getElementById('score-x-box').classList.toggle('turn', current === 'X');
+    document.getElementById('score-o-box').classList.toggle('turn', current === 'O');
+  }
+
+  function winner(b) {
+    for (var i = 0; i < wins.length; i++) {
+      var w = wins[i], a = b[w[0]];
+      if (a && a === b[w[1]] && a === b[w[2]]) return { p: a, line: w };
+    }
+    return b.indexOf('') === -1 ? { p: 'D', line: null } : null;
+  }
+
+  function render() {
+    for (var i = 0; i < 9; i++) {
+      cells[i].textContent = board[i];
+      cells[i].className = 'cell' + (board[i] ? ' filled ' + board[i].toLowerCase() : '');
+    }
+  }
+
+  function finish(res) {
+    over = true;
+    if (res.p === 'D') {
+      scores.d++;
+      statusEl.textContent = 'تعادل! 🤝';
+    } else {
+      scores[res.p.toLowerCase()]++;
+      var n = names();
+      var msg;
+      if (mode !== 'friend' && res.p === 'O') msg = 'الكمبيوتر كسب 😅';
+      else if (mode !== 'friend') msg = 'كسبت! 🎉';
+      else msg = n[res.p] + ' كسب! 🎉';
+      statusEl.textContent = msg;
+      res.line.forEach(function (i) { cells[i].classList.add('win'); });
+    }
+    document.getElementById('score-x').textContent = scores.x;
+    document.getElementById('score-o').textContent = scores.o;
+    document.getElementById('score-draw').textContent = scores.d;
+    document.getElementById('score-x-box').classList.remove('turn');
+    document.getElementById('score-o-box').classList.remove('turn');
+  }
+
+  function play(i) {
+    if (over || board[i]) return;
+    if (mode !== 'friend' && current === 'O') return;
+    board[i] = current;
+    render();
+    var res = winner(board);
+    if (res) return finish(res);
+    current = current === 'X' ? 'O' : 'X';
+    setStatus();
+    if (mode !== 'friend' && current === 'O' && !over) {
+      statusEl.textContent = 'الكمبيوتر بيفكر...';
+      setTimeout(aiMove, 350 + Math.random() * 350);
+    }
+  }
+
+  function aiMove() {
+    if (over) return;
+    var idx = mode === 'easy' ? randomMove() : bestMove();
+    board[idx] = 'O';
+    render();
+    var res = winner(board);
+    if (res) return finish(res);
+    current = 'X';
+    setStatus();
+  }
+
+  function emptyIdx(b) {
+    var r = [];
+    for (var i = 0; i < 9; i++) if (!b[i]) r.push(i);
+    return r;
+  }
+
+  function randomMove() {
+    var e = emptyIdx(board);
+    return e[Math.floor(Math.random() * e.length)];
+  }
+
+  function minimax(b, isMax) {
+    var res = winner(b);
+    if (res) {
+      if (res.p === 'O') return { score: 10 };
+      if (res.p === 'X') return { score: -10 };
+      return { score: 0 };
+    }
+    var e = emptyIdx(b), best = null;
+    for (var i = 0; i < e.length; i++) {
+      b[e[i]] = isMax ? 'O' : 'X';
+      var s = minimax(b, !isMax).score;
+      b[e[i]] = '';
+      if (!best || (isMax ? s > best.score : s < best.score)) best = { score: s, idx: e[i] };
+    }
+    return best;
+  }
+
+  function bestMove() {
+    var b = board.slice();
+    return minimax(b, true).idx;
+  }
+
+  function reset(full) {
+    board = Array(9).fill('');
+    current = 'X';
+    over = false;
+    if (full) { scores = { x: 0, o: 0, d: 0 };
+      document.getElementById('score-x').textContent = 0;
+      document.getElementById('score-o').textContent = 0;
+      document.getElementById('score-draw').textContent = 0;
+    }
+    render();
+    setStatus();
+  }
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('mode-friend').classList.toggle('active', m === 'friend');
+    document.getElementById('mode-easy').classList.toggle('active', m === 'easy');
+    document.getElementById('mode-hard').classList.toggle('active', m === 'hard');
+    document.getElementById('label-x').textContent = m === 'friend' ? 'اللاعب X' : 'إنت (X)';
+    document.getElementById('label-o').textContent = m === 'friend' ? 'اللاعب O' : 'الكمبيوتر (O)';
+    reset(true);
+  }
+
+  document.getElementById('mode-friend').addEventListener('click', function () { setMode('friend'); });
+  document.getElementById('mode-easy').addEventListener('click', function () { setMode('easy'); });
+  document.getElementById('mode-hard').addEventListener('click', function () { setMode('hard'); });
+  document.getElementById('reset').addEventListener('click', function () { reset(false); });
+
+  setStatus();
+})();
+</script>
+</body>
+</html>
